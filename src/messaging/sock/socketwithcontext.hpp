@@ -37,7 +37,11 @@ namespace qi { namespace sock {
 
     io_service_t& get_io_service()
     {
-      return socket.get_io_service();
+      #if BOOST_VERSION >= 107000
+        return static_cast<io_service_t&>(socket.get_executor().context());
+      #else
+        return socket.get_io_service();
+      #endif
     }
 
     void set_verify_mode(decltype(N::sslVerifyNone()) x)

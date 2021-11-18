@@ -25,7 +25,11 @@ namespace qi { namespace sock {
     using socket_option_no_delay_type = boost::asio::ip::tcp::no_delay;
     using accept_option_reuse_address_type = boost::asio::ip::tcp::acceptor::reuse_address;
     using error_code_type = boost::system::error_code;
+#if BOOST_VERSION >= 107000
+    using io_service_type = boost::asio::io_context;
+#else
     using io_service_type = boost::asio::io_service;
+#endif
     using const_buffer_type = boost::asio::const_buffer;
     static io_service_type& defaultIoService()
     {
