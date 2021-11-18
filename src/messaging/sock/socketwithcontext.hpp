@@ -8,6 +8,21 @@
 
 namespace qi { namespace sock {
 
+  // Traits to check whether a class has a get_io_service function
+  // This is used to conditionally check SFINAE test
+  template <typename T>
+  class has_get_io_service
+  {
+      typedef char one;
+      struct two { char x[2]; };
+
+      template <typename C> static one test( decltype(&C::get_io_service) ) ;
+      template <typename C> static two test(...);
+
+  public:
+      enum { value = sizeof(test<T>(0)) == sizeof(char) };
+  };
+
   /// Socket bound to an ssl context.
   ///
   /// The purpose is to ensure that the ssl context has the same lifetime as
@@ -35,14 +50,22 @@ namespace qi { namespace sock {
     {
     }
 
-    io_service_t& get_io_service()
+    // Since Boost 1.70 get_io_service() has been removed
+    // However the internal types of libqi still provide interfaces using that function
+    // Thus, we conditionnally use the get_io_service() call if it exists within the socket_t implementation (e.g old boost implementations or libqi types)
+    // and use the new get_executor().context() call for boost types (>=1.70)
+    template <typename T = socket_t>
+    typename std::enable_if<has_get_io_service<T>::value, io_service_t>::type& get_io_service()
     {
-      #if BOOST_VERSION >= 107000
-        return static_cast<io_service_t&>(socket.get_executor().context());
-      #else
-        return socket.get_io_service();
-      #endif
+      return socket.get_io_service();
     }
+
+    template <typename T = socket_t>
+    typename std::enable_if<!has_get_io_service<T>::value, io_service_t>::type& get_io_service()
+    {
+      return static_cast<io_service_t&>(socket.get_executor().context());
+    }
+
 
     void set_verify_mode(decltype(N::sslVerifyNone()) x)
     {
